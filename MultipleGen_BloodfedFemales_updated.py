@@ -8,18 +8,15 @@ start_time = time.time()
 
 np.set_printoptions(threshold=np.inf)
 
-# import time
-# start = time.time()
-
 N_mosquito = 1000  # Number of wild mosquito populations
-# Number of released mosquitoes (10% of wild population size as the default)
-N_release = N_mosquito * 0.1
-N_simulation = 1  # Number of simulations in each run
+N_release = N_mosquito * 0.1  # Number of released mosquitoes
+N_simulation = 10  # Number of simulations in each run
 
 modelnumber = 0  # use this to run on laptop
 # modelnumber=int(sys.argv[1])          # for cluster
-parameterarray = np.loadtxt("SensitivityAnalysisBloodfed",
-                            delimiter=",")  # An matrix with all parameter values: each row is a parameter set and each column is one parameter
+
+# An matrix with all parameter values: each row is a parameter set and each column is one parameter
+parameterarray = np.loadtxt("SensitivityAnalysisBloodfed", delimiter=",")
 # Choose the running parameter values for a specific run
 currentparameters = parameterarray[modelnumber, :]
 
@@ -50,12 +47,9 @@ hi, FF, vcw, vcr, ovi, bitephase, EIP, mubites, releaseratio, a, b, s, c, sdovi,
 # name         = index of runs (for tracking different runs on the cluster, not part of the simulation but is used for writing simulation output)
 # VC1 - VC10   = the VC of the wild mosquito population throughout the 10 generations, expressed as proportion to the initial wild population VC (i.e. the first element is always 1)
 
-
 # Note: vector competence represents the mosquito's ability to transmit diseases. We assume each mosquitoes have a VC range between 0 and 1.
 
-
 VC_decline = np.array([VC1, VC2, VC3, VC4, VC5, VC6, VC7, VC8, VC9, VC10])
-
 
 # The following four lines are the change of VC across the 10 generations for four difference scenarios
 # VC_decline=np.array ([1,0.959,0.921,0.886,0.853,0.822,0.794,0.767,0.743,0.719])       #ONLY MALES
@@ -66,22 +60,30 @@ VC_decline = np.array([VC1, VC2, VC3, VC4, VC5, VC6, VC7, VC8, VC9, VC10])
 
 
 # Function to calulate the mortality of mosquitoes depending on their age
-def age_dependence(x):  # hazard rate calculator
+def age_dependence(x, a1, b1, s1, c1, delta_t):  # hazard rate calculator
     # defines the hazard rate function
     # adjust c to change agerage life expectancy, c=0.022 is 21 days
     """
     EDIT: Local variables are more efficient
-    """
     a1 = 1.799999999999999951e-03
     b1 = 1.416000000000000036e-01
     s1 = 1.072999999999999954e+00
     c1 = 2.199999999999999872e-02
-    return ne.evaluate('exp(-((a1 * exp(b1 * x)) / (1 + (a1 * s1 / b1) * (exp(b1 * x) - 1)) + c1))')
-    # px is the survival probability of a mosquito at age x
+    """
+    return ne.evaluate('exp(-((a1 * exp(b1 * x)) / (1 + (a1 * s1 / b1) * (exp(b1 * x) - 1)) + c1) * delta_t)')
+
+
+age_wild = age_dependence(np.arange(0, 100, 0.1), a, b, s, c, 0.1)
+age_wild[-1] = 0  # force the mosquito to die at the last time breakpoint
+survival_wild = np.cumprod(age_wild)
+
+age_release = age_wild
+age_release[0:int(10*FF)] = 1
+survival_release = 1
 
 
 # Function to sample the life span of a mosquito
-def age_of_death(F):  # age of death calculator
+def age_of_death(F, survival_p):  # age of death calculator
     # F = age at release (0 for wild, 5 for lab)
     """
     Old Code:
