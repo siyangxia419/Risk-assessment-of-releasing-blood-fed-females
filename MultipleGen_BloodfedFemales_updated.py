@@ -8,6 +8,11 @@ start_time = time.time()
 
 np.set_printoptions(threshold=np.inf)
 
+
+"""
+Section 1: specify simulation scale and import model parameters
+"""
+
 N_mosquito = 1000  # Number of wild mosquito populations
 N_release = N_mosquito * 0.1  # Number of released mosquitoes
 N_simulation = 10  # Number of simulations in each run
@@ -17,7 +22,6 @@ modelnumber = 0  # use this to run on laptop
 
 # An matrix with all parameter values: each row is a parameter set and each column is one parameter
 parameterarray = np.loadtxt("SensitivityAnalysisBloodfed", delimiter=",")
-# Choose the running parameter values for a specific run
 currentparameters = parameterarray[modelnumber, :]
 
 with np.printoptions(precision=3, suppress=True):
@@ -25,103 +29,80 @@ with np.printoptions(precision=3, suppress=True):
 
 hi, FF, vcw, vcr, ovi, bitephase, EIP, mubites, releaseratio, a, b, s, c, sdovi, sdhost, sdbite, sdEIP, sdVCw, sdVCr, fed, name, VC1, VC2, VC3, VC4, VC5, VC6, VC7, VC8, VC9, VC10 = currentparameters
 # Assign parameter values to variables for easy use in the rest of the script
-
-# hi           = % of Humans Infectious (dafault = 0.05)
-# FF           = age of the mosquitoes when released (default = 5, i.e. the released mosquitoes are five days old)
-# vcw          = mean vector competence of the wild mosquitoes (default = 0.524)
-# vcr          = mean vector competence of the released mosquitoes (default = 0.2)
-# ovi          = mean duration of the oviposition period (default = 4 days)
-# bitephare    = mean duration of the host-seeking period (default = 4 days)
-# EIP          = mean duration of the extrinsic incubation period (the time between a mosquito acquires the virus and it becomes infectious, default = 11 days)
-# mubites      = mean number of bites in each host-seeking period (default = 2)
-# releaseratio = size of the released population relative to the wild population (default = 1, which represents releasing 10% of the wild population size)
-# a, b, s, c   = parameters that define the mosquito age-dependent survival function
-# sdovi        = standard deviation of the oviposition period (default = 1 days)
-# sdhost       = standard deviation of the host-seeking period (default = 1 days)
-# sdbite       = standard deviation of the number of bites in each host-seeking period (default = 1)
-# sdEIP        = standard deviation of EIP (default = 1 days)
-# sdVCw        = standard deviation of the wild mosquito VC (default = 0.125)
-# sdVCr        = standard deviation of the released mosquito VC (default = 0.125)
-# fed          = proportion of the released mosquitoes being fed before the release (default = 1)
-#    we are proposing to release female mosquitoes after blood-feeding them in the lab, but practically some individuals might fail to feed in the lab
-# name         = index of runs (for tracking different runs on the cluster, not part of the simulation but is used for writing simulation output)
-# VC1 - VC10   = the VC of the wild mosquito population throughout the 10 generations, expressed as proportion to the initial wild population VC (i.e. the first element is always 1)
-
-# Note: vector competence represents the mosquito's ability to transmit diseases. We assume each mosquitoes have a VC range between 0 and 1.
-
 VC_decline = np.array([VC1, VC2, VC3, VC4, VC5, VC6, VC7, VC8, VC9, VC10])
 
-# The following four lines are the change of VC across the 10 generations for four difference scenarios
-# VC_decline=np.array ([1,0.959,0.921,0.886,0.853,0.822,0.794,0.767,0.743,0.719])       #ONLY MALES
-# For only males, there're effectively 0 released mosq bc no males bite (only VC change)
-# VC_decline=np.array ([1,0.928,0.865,0.810,0.761,0.718,0.680,0.646,0.615,0.588])        #Blood-fed Fem + Males
-# VC_decline=np.array ([1,0.956,0.916,0.879,0.845,0.813,0.783,0.756,0.730,0.707])       #Unfed Fem + Males
-# VC_decline=np.array ([1,1,1,1,1,1,1,1,1,1])       #baseline
+"""
+Parameter explanation:
+# hi                    = % of Humans Infectious (dafault = 0.05)
+# FF                  = age of the mosquitoes when released (default = 5, i.e. the released mosquitoes are five days old)
+# vcw                = mean vector competence of the wild mosquitoes (default = 0.524)
+# vcr                  = mean vector competence of the released mosquitoes (default = 0.2)
+# ovi                  = mean duration of the oviposition period (default = 4 days)
+# bitephare        = mean duration of the host-seeking period (default = 4 days)
+# EIP                 = mean duration of the extrinsic incubation period (the time between a mosquito acquires the virus and it becomes infectious, default = 11 days)
+# mubites           = mean number of bites in each host-seeking period (default = 2)
+# releaseratio     = size of the released population relative to the wild population (default = 1, which represents releasing 10% of the wild population size)
+# a, b, s, c           = parameters that define the mosquito age-dependent survival function
+# sdovi               = standard deviation of the oviposition period (default = 1 days)
+# sdhost              = standard deviation of the host-seeking period (default = 1 days)
+# sdbite              = standard deviation of the number of bites in each host-seeking period (default = 1)
+# sdEIP               = standard deviation of EIP (default = 1 days)
+# sdVCw             = standard deviation of the wild mosquito VC (default = 0.125)
+# sdVCr              = standard deviation of the released mosquito VC (default = 0.125)
+# fed                   = proportion of the released mosquitoes being fed before the release (default = 1)
+# name               = index of runs (for tracking different runs on the cluster, not part of the simulation but is used for writing simulation output)
+# VC1 - VC10   = the VC of the wild mosquito population throughout the 10 generations, expressed as proportion to the initial wild population VC (i.e. the first element is always 1)
+
+# Note 1: vector competence represents the mosquito's ability to transmit diseases. We assume each mosquitoes have a VC range between 0 and 1.
+# Note 2: #    we are proposing to release female mosquitoes after blood-feeding them in the lab, but practically some individuals might fail to feed in the lab
+
+# The change of VC across the 10 generations for four difference scenarios at baseline
+# VC_decline=np.array ([1,0.959,0.921,0.886,0.853,0.822,0.794,0.767,0.743,0.719])       # Only males
+# For only males, there're effectively 0 released mosq (only VC change)
+# VC_decline=np.array ([1,0.928,0.865,0.810,0.761,0.718,0.680,0.646,0.615,0.588])       # Blood-fed Fem + Males
+# VC_decline=np.array ([1,0.956,0.916,0.879,0.845,0.813,0.783,0.756,0.730,0.707])       #  Unfed Fem + Males
+# VC_decline=np.array ([1,1,1,1,1,1,1,1,1,1])                                                                      # no releases
+"""
+
+
+"""
+Section 2: Simulation functions
+"""
 
 
 # Function to calulate the mortality of mosquitoes depending on their age
-def age_dependence(x, a1, b1, s1, c1, delta_t):  # hazard rate calculator
-    # defines the hazard rate function
-    # adjust c to change agerage life expectancy, c=0.022 is 21 days
+def age_dependence(x, a1, b1, s1, c1, delta_t):
     """
-    EDIT: Local variables are more efficient
-    a1 = 1.799999999999999951e-03
-    b1 = 1.416000000000000036e-01
-    s1 = 1.072999999999999954e+00
-    c1 = 2.199999999999999872e-02
+    x: age of the mosquito
+    a1, b1, s1, c1: parameters to define the hazard function (Styler et al. 2007)
+        a1 = 1.799999999999999951e-03
+        b1 = 1.416000000000000036e-01
+        s1 = 1.072999999999999954e+00
+        c1 = 2.199999999999999872e-02
+        adjust c to change agerage life expectancy, c=0.022 is 21 days
+    delta_t: time interval
     """
     return ne.evaluate('exp(-((a1 * exp(b1 * x)) / (1 + (a1 * s1 / b1) * (exp(b1 * x) - 1)) + c1) * delta_t)')
 
 
+# probability of surviving any 0.1 day interval:
 age_wild = age_dependence(np.arange(0, 100, 0.1), a, b, s, c, 0.1)
 age_wild[-1] = 0  # force the mosquito to die at the last time breakpoint
+
+# probability of surviving to any 0.1 day for wild mosquitoes:
 survival_wild = np.cumprod(age_wild)
 
-age_release = age_wild[int(10*FF):]
+age_release = age_wild[int(10*FF):]  # released mosquitoes have no mortality before being released
+# probability of surviving to any 0.1 day for released mosquitoes (since the time of release):
 survival_release = np.cumprod(age_release)
 
 
 # Function to sample the life span of a mosquito
-def age_of_death(F, survival_p):  # age of death calculator
-    # F = age at release (0 for wild, 5 for lab)
-    """
-    Old Code:
-    age_m = np.zeros([1000])  # 1/10 of a day as the time resolution, simulate for 100 days
-    age_matrix = np.asarray(age_m)
-    i = 0
-    while i < 999:
-        age_matrix[i] = age_dependence(i / 10)
-        i += 1
-        # calculates the age dependent mortality at each 10th of a day
-    """
-    age_m = np.arange(0, 100, 0.1)
-    age_matrix = age_dependence(age_m)
-
-    fref = int(F * 10)
-
-    """
-    Old code:
-    for x in range(0, 999):
-        if fref > x:
-            age_matrix[x] = 1  # released mosquitoes have no mortality before being released
-    """
-    age_matrix[0:fref] = 1
-
-    # reshape the vector to a 100x10 matrix, with each row represents a single day and each column represent the 10th of each day
-    age_matrixx = np.reshape(age_matrix, (100, 10))
-
-    # The next two lines calculate the probability of the mosquito surviving to certain age (with 0.1 days as time resolution)
-    achance_survive = np.cumprod(age_matrixx, axis=0)
-    chance_survive = np.reshape(achance_survive, (1000, 1))
-
+def age_of_death(survival_p):  # age of death calculator
+    # survival_p: option = survival_wild or survival_release
     rando = np.random.random_sample(1)
-    itemindex = np.where(chance_survive < rando)
-    # calls only where the array of chance-probabilities < random number value
-    aitemindex = np.asarray(itemindex)
-    deathcell = aitemindex[0, 0]
-    DEATH = (
-        deathcell - fref) / 10  # the time of death (for the release mosquitoes, this is the time of death after being released)
-
+    itemindex = np.asarray(np.where(survival_p < rando))
+    DEATH = itemindex[0, 0] / 10
     return DEATH
 
 
