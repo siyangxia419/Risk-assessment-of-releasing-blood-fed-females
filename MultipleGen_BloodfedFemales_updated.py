@@ -77,9 +77,8 @@ age_wild = age_dependence(np.arange(0, 100, 0.1), a, b, s, c, 0.1)
 age_wild[-1] = 0  # force the mosquito to die at the last time breakpoint
 survival_wild = np.cumprod(age_wild)
 
-age_release = age_wild
-age_release[0:int(10*FF)] = 1
-survival_release = 1
+age_release = age_wild[int(10*FF):]
+survival_release = np.cumprod(age_release)
 
 
 # Function to sample the life span of a mosquito
