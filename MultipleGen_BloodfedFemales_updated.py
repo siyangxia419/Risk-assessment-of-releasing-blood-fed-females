@@ -32,6 +32,26 @@ hi, FF, vcw, vcr, ovi, bitephase, EIP, mubites, releaseratio, a, b, s, c, sdovi,
 VC_decline = np.array([VC1, VC2, VC3, VC4, VC5, VC6, VC7, VC8, VC9, VC10])
 
 """
+parameter_dict = dict(hi=hi,
+                      FF=FF,
+                      vcw=vcw,
+                      vcr=vcr,
+                      ovi=ovi,
+                      bitephase=bitephase,
+                      EIP=EIP,
+                      mubites=mubites,
+                      releaseratio=releaseratio,
+                      a=a, b=b, s=s, c=c,
+                      sdovi=sdovi,
+                      sdhost=sdhost,
+                      sdbite=sdbite,
+                      sdEIP=sdEIP,
+                      sdVCw=sdVCw,
+                      sdVCr=sdVCr,
+                      fed=fed)
+"""
+
+"""
 Parameter explanation:
 # hi                    = % of Humans Infectious (dafault = 0.05)
 # FF                  = age of the mosquitoes when released (default = 5, i.e. the released mosquitoes are five days old)
@@ -108,17 +128,19 @@ def age_of_death(survival_p):  # age of death calculator
 
 # Function to simulate one single mosquito
 # We first simulate a sequence of 10 gonotrophic cycle and them use the time of death to clip the sequence to preserve only the parts when the mosquito is alive
-def one_mosquito(hi, binary, vcmu, vcsigma):  # for binary, 1=release 0=wild
+def one_mosquito(hi, trinary, vcmu, vcsigma):
+    # trinary: 0=wild, 1=release after successful blood-feeding, 2=release after failed bloodfeeding
 
-    mu, sigma = vcmu, vcsigma  # Vector Competence
-    vc = np.random.normal(mu, sigma,
-                          1)  # each individual mosquito has a constant VC randomly sampled from a normal distribution
+    # Vector Competence:
+    mu, sigma = vcmu, vcsigma
+    vc = np.random.normal(mu, sigma, 1)  # each individual mosquito has a constant VC
 
+    # Duration of Oviposition:
     mu, sigma = ovi, sdovi  # Duration of Oviposition
-    do = np.random.normal(mu, sigma,
-                          10)  # 10 numbers to represent 10 gonotrophic cycles (each includes a host-seeking and an oviposition period)
-    trunc_do = np.clip(do, 3,
-                       30)  # assume that each oviposition period must be at least 3 days and no more than 30 days
+    # 10 numbers to represent 10 gonotrophic cycles (each includes a host-seeking and an oviposition period)
+    do = np.random.normal(mu, sigma, 10)
+    # assume that each oviposition period must be at least 3 days and no more than 30 days
+    trunc_do = np.clip(do, 3, 30)
     ado = np.asarray([trunc_do])
 
     # For each gonotrophic cycle, we start with the oviposition phase and then the host-seeking phase
@@ -129,41 +151,44 @@ def one_mosquito(hi, binary, vcmu, vcsigma):  # for binary, 1=release 0=wild
     add_2 = np.array([2, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     ado0 = ado * firstO
     ado2 = np.asarray(ado0 + add_2)
-    if binary == 1:
 
-        final_ato = ado  # "ado" for normal model, "ado0" for non-bloodfed mosq <-------------key input
-
-        # Released population
+    if trinary == 1:
+        final_ato = ado  # release females successfully fed
+    elif trinary == 2:
+        final_ato = ado0  # release females unsuccessfully fed
     else:
-        final_ato = ado2
-        # wild population
+        final_ato = ado2  # wild females
+
     atdo = final_ato.transpose()
     attdo = atdo.transpose()
 
-    mu, sigma = bitephase, sdhost  # Duration of Bloodfeeding
+    # Duration of Bloodfeeding:
+    mu, sigma = bitephase, sdhost
     db = np.random.normal(mu, sigma, 10)
     # At least spending one day in blood-feeding and no more than 30 days
     trunc_db = np.clip(db, 1, 30)
     adb = np.asarray([trunc_db])
     atdb = np.transpose(adb)
 
-    mu, sigma = mubites, sdbite  # Bites per gonotrophic cycle (i.e. each host-seeking period)
+    # Bites per gonotrophic cycle (i.e. each host-seeking period):
+    mu, sigma = mubites, sdbite
     bites = np.random.normal(mu, sigma, 10)
     nb = np.array([bites])
     anb = np.round(nb)  # rounded bc: bites must be integers
     trunc_anb = np.clip(anb, 1, 10)  # at least one bites per cycle and at most 10 bites
     atnb = trunc_anb.transpose()
 
-    mu, sigma = EIP, sdEIP  # Extrinsic Incubation Period
+    # Extrinsic Incubation Period:
+    mu, sigma = EIP, sdEIP
     eip_draw = np.random.normal(mu, sigma, 1)  # Only need one value for each individual
     eip = np.clip(eip_draw, 5, 30)  # EIP at least 5 days and at most 30 days
 
-    infection_status = np.zeros(
-        [10])  # a vector to record whether the mosquito got infected during each gonotrophic cycle
-    # cycle through the two gonotrophic cycle:
+    # a vector to record whether the mosquito got infected during each gonotrophic cycle
+    infection_status = np.zeros([10])
+
+    # cycle through the first nine gonotrophic cycle:
     for x in range(0, 9):
         bitesincyc = int(atnb[x])  # extract the number of bites in this gonotrophic cycle
-        # unclear why int() is necessary here, other situations, arrays work
         randn = np.random.random_sample((bitesincyc))
         for i in np.nditer(randn):  # determine whether each bite infect the mosquito
             if i < (hi * vc):  # hi * vc is the probability of the mosquito got affected biting any human
@@ -175,10 +200,12 @@ def one_mosquito(hi, binary, vcmu, vcsigma):  # for binary, 1=release 0=wild
     IS = np.asarray([infection_status])
     tIS = IS.transpose()
 
-    empty_list = np.zeros(
-        10)  # create a counter vector to record the days since the mosquitoes got affected for each gonotrophic cycle: if counter > EIP, the mosquito becomes infectious
+    # Create a counter to record the days since the mosquitoes got affected for each gonotrophic cycle:
+    # if counter > EIP, the mosquito becomes infectious
+    empty_list = np.zeros(10)
     empty_array = np.array([empty_list])
     counter = empty_array.transpose()
+
     for x in range(0, 9):  # Calculates initial counter input
         biteday = (tIS[x])
         # calls the infectious binary signal
@@ -186,9 +213,8 @@ def one_mosquito(hi, binary, vcmu, vcsigma):  # for binary, 1=release 0=wild
         # calls the length of biting cycle when mosquito was infected
         randn = np.random.random_sample(())
         if biteday == 1:
-            counter[
-                x] = randn * bitephaseday  # Within the host-seeking perid in which the mosquito got infected, what is the time between the infectious bites and the end of the biting phase
-            # (random)*(days) is used as a 'randbetween' function
+            counter[x] = randn * bitephaseday
+            # Within the host-seeking perid in which the mosquito got infected, what is the time between the infectious bites and the end of the biting phase
 
     gono = atdb + atdo  # combining blood-feeding duration and oviposition duration for full Gono-cycle length
     agono = np.asarray(gono)
@@ -219,7 +245,7 @@ def one_mosquito(hi, binary, vcmu, vcsigma):  # for binary, 1=release 0=wild
     risky_bites = np.array(EIPtest * atnb)
     # binary test to eliminate non-infectious bites
 
-    # Number of humans infected by this mosquito in each gonotrophic cycle
+    # Number of humans infected by this mosquito in each gonotrophic cycle:
     empty_humans = np.zeros(10)
     tempty_humans = empty_humans.transpose()
     infected_humans = np.asarray(tempty_humans)
@@ -247,11 +273,10 @@ def one_mosquito(hi, binary, vcmu, vcsigma):  # for binary, 1=release 0=wild
     abiting_age = np.asarray(biting_age)
 
     agetodie = np.zeros(10)
-    if binary == 1:  # Links the dif DOD functions to binary, binary = 1 indicates that we are simulating a release mosquito
-        F = FF
+    if trinary == 0:  # Links the dif DOD functions to trinary, trinary = 1 indicates that we are simulating a release mosquito
+        DOOD = age_of_death(survival_wild)
     else:
-        F = 0
-    DOOD = age_of_death(F)
+        DOOD = age_of_death(survival_release)
     # selects the death age function, assumes 5 days old for the released
 
     for x in range(0, 10):  # eliminates all transmissions after death
@@ -262,7 +287,8 @@ def one_mosquito(hi, binary, vcmu, vcsigma):  # for binary, 1=release 0=wild
                 # ensures that x+1 isn't out of range
                 # the mosquito enters the next gonotrophic cycle, which means it has the chance to bite more people
                 agetodie[x + 1] = 1
-    # After this loop, agetodie should indicate whether the mosquito is still alive at the beginning of next gonotrophic cycle
+    # After this loop, agetodie should indicate whether the mosquito is still alive at the beginning of next gonotrophic cycle,
+    # which gives the mosquito chance to bite more humans in the next gonotropic cycle
 
     scaretest = 0  # Result of whether mosquito was infectious before died
     EIPttest = EIPtest.transpose()
