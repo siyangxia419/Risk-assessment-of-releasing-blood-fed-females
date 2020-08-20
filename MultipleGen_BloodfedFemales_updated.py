@@ -322,11 +322,16 @@ def one_mosquito(hi, trinary, vcmu, vcsigma):
 
     return aliving_infections, scaretest
 
-
 # End of defining functions #
 
 
-# A matrix to record the total value across the ten generations: each row represents a simulation and the four columns are four different output:
+"""
+Section 3: simulate mosquito releases and disease transmission
+"""
+
+
+# A matrix to record the total value across the ten generations:
+# each row represents a simulation and the four columns are four different output:
 # The four output: number of infectious mosquitoes from the wild and released mosquito populations, number of human infections from wild and released mosquitoes
 blank_results = np.zeros((N_simulation, 4))  # first number equals size of Z below
 stochastic_array = np.asarray(blank_results)
@@ -338,18 +343,22 @@ GenerationMatrix = np.asarray(Blank_Per_Gen)
 z = 0
 
 while z < N_simulation:  # Z is the number of simluations
+    print("Simulation number", z)
 
     for J in range(0, 10):  # the 10 generations
+        print("Generation", J)
+
         # extract the proportional VC of the wild mosquitoes in that generation
         VC_genX_factor = VC_decline[J]
 
+        # update human infection proportion: hi
         if J > 0:  # makes HI proportion of gen 1 infections
             hi = 0.05 * ((GenerationMatrix[z, J - 1] +
                           GenerationMatrix[z, J + 10 - 1]) / GenerationMatrix[z, 0])
         else:
             hi = 0.05
 
-        print(hi)
+        print("human infection proportion:", hi)
 
         x = 0  # wild population loop
         output_array = np.zeros(10)
@@ -372,8 +381,8 @@ while z < N_simulation:  # Z is the number of simluations
                 # the released mosquitoes that are already fed in the lab
                 released = one_mosquito(hi, 1, vcr, sdVCr)
             else:
-                released = one_mosquito(hi, 0, vcr, sdVCr)
-                # the released mosquitoes that faild to fed in the lab, which is roughly equal to wild mosquitoes that have lower vector competence
+                # the released mosquitoes that faild to fed in the lab
+                released = one_mosquito(hi, 2, vcr, sdVCr)
             output_array2 += released[0]
             releasedanger += released[1]
             xx += 1
@@ -382,8 +391,8 @@ while z < N_simulation:  # Z is the number of simluations
         stochastic_array[z, 3] += releasedanger
 
         GenerationMatrix[z, J] = wild_mic_drop
-        GenerationMatrix[
-            z, J + 10] = released_mic_drop  # Sets up a 40 column output, first 10 for wild , last 10 released
+        # Sets up a 40 column output, first 10 for wild , last 10 released
+        GenerationMatrix[z, J + 10] = released_mic_drop
         GenerationMatrix[z, J + 20] = dangercount
         GenerationMatrix[z, J + 30] = releasedanger
 
@@ -393,7 +402,7 @@ while z < N_simulation:  # Z is the number of simluations
     print("Total Infections RELEASED:\n {}".format(released_mic_drop))
 
     print(GenerationMatrix[z, ])
-    print('\n')
+    print('\n\n\n\n\n')
 
     z += 1
 
@@ -406,27 +415,28 @@ np.savetxt(f'simulation_BloodfedFemales_Gens_{name:03.0f}.csv', GenerationMatrix
 
 # pads file names with 3 zeros so that it naturally sorts in order (rather than 1,10,2,20 etc)
 
+"""
+hist=plt.hist(stochastic_array[:,[0,2]], 150, histtype = 'bar')
+labels= ["Wild", "Released"]
+plt.ylabel("Frequency")
+plt.xlabel("Infections")
+plt.legend(labels= ["wild","Released"])
+plt.savefig(f'Figure1_{name:03.0f}.png')
 
-# hist=plt.hist(stochastic_array[:,[0,2]], 150, histtype = 'bar')
-# labels= ["Wild", "Released"]
-# plt.ylabel("Frequency")
-# plt.xlabel("Infections")
-# plt.legend(labels= ["wild","Released"])
-# plt.savefig(f'Figure1_{name:03.0f}.png')
+plt.figure()
+hist1=plt.hist(stochastic_array[:,2], 50, histtype = 'bar', label=["Released"], color='orange')
+plt.ylabel("Frequency")
+plt.xlabel("Infections")
+plt.legend(labels= ["Released"])
+plt.savefig(f'Figure2_{name:03.0f}.png')
 
-# plt.figure()
-# hist1=plt.hist(stochastic_array[:,2], 50, histtype = 'bar', label=["Released"], color='orange')
-# plt.ylabel("Frequency")
-# plt.xlabel("Infections")
-# plt.legend(labels= ["Released"])
-# plt.savefig(f'Figure2_{name:03.0f}.png')
-
-# plt.figure()
-# hist2=plt.hist(stochastic_array[:,[1,3]], 150, histtype = 'bar')
-# labels2= ["Wild", "Released"]
-# plt.ylabel("Frequency")
-# plt.xlabel("Number of Infectious Mosquitoes")
-# plt.legend(labels= ["wild","Released"])
-# plt.savefig(f'Figure3_{name:03.0f}.png')
+plt.figure()
+hist2=plt.hist(stochastic_array[:,[1,3]], 150, histtype = 'bar')
+labels2= ["Wild", "Released"]
+plt.ylabel("Frequency")
+plt.xlabel("Number of Infectious Mosquitoes")
+plt.legend(labels= ["wild","Released"])
+plt.savefig(f'Figure3_{name:03.0f}.png')
+"""
 
 print("--- %s seconds ---" % (time.time() - start_time))
