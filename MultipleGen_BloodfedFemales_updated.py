@@ -13,9 +13,9 @@ np.set_printoptions(threshold=np.inf)
 Section 1: specify simulation scale and import model parameters
 """
 
-N_mosquito = 1000  # Number of wild mosquito populations
+N_mosquito = 5000  # Number of wild mosquito populations
 N_release = N_mosquito * 0.1  # Number of released mosquitoes
-N_simulation = 10  # Number of simulations in each run
+N_simulation = 100  # Number of simulations in each run
 
 modelnumber = 0  # use this to run on laptop
 # modelnumber=int(sys.argv[1])          # for cluster
